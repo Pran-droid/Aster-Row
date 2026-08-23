@@ -234,19 +234,7 @@ Framework choice and quantity of code are not scoring criteria.
 │   └── orders-data-dictionary.md
 └── evaluation/
     └── visible-cases.json
-├── app/
-│   ├── agent.py
-│   ├── retrieval.py
-│   ├── tools.py
-│   ├── memory.py
-│   ├── logs.py
-│   ├── config.py
-│   └── __init__.py
-├── tests/
-│   ├── test_agent_basics.py
-│   ├── test_order_lookup.py
-│   ├── test_retrieval.py
-│   └── __init__.py
+├── cli.py
 ├── requirements.txt
 └── .env.example
 ```
@@ -297,7 +285,38 @@ Or combined:
 python -c "from evaluation.runner import run_evaluation; import json; print(json.dumps(run_evaluation(), indent=2))"
 ```
 
-### 4. Run the agent interactively
+### 4. Run the CLI interface
+
+```bash
+python cli.py
+```
+
+This starts an interactive conversation with the agent. Example session:
+
+```
+======================================================================
+Aster & Row Support Agent
+======================================================================
+Ask a question about returns, shipping, warranties, or orders.
+Type 'exit' to quit.
+
+You: How long do I have to return an unused backpack?
+
+Agent: A regular customer may request a return within 30 calendar days of delivery for an unused backpack in resalable condition.
+📄 Sources: 01-returns-policy-current.md
+
+You: Can I put the entire Breeze Tumbler in the dishwasher?
+
+Agent: The current official sources conflict: one says hand-wash the body, and one says all components are dishwasher safe. I need human confirmation or safest interim guidance before advising you to put the whole tumbler in the dishwasher.
+📄 Sources: 11-product-care.md, 12-breeze-tumbler-product-card.md
+🤝 Human handoff recommended
+
+You: exit
+
+Agent: Thank you for contacting Aster & Row support. Goodbye! 👋
+```
+
+### 5. Run the agent programmatically
 
 ```bash
 python -c "
@@ -522,58 +541,82 @@ Copilot was most valuable for **routine scaffolding and test boilerplate**, but 
 
 ## Demo
 
-*A 2–4 minute screencast demonstrating the agent's capabilities would be embedded here. For now, run the evaluation suite and the interactive examples above to see the agent in action.*
+### Interactive CLI
+
+Start the CLI interface:
+
+```bash
+$ python cli.py
+
+======================================================================
+Aster & Row Support Agent
+======================================================================
+Ask a question about returns, shipping, warranties, or orders.
+Type 'exit' to quit.
+
+You: How long do I have to return an unused backpack?
+
+Agent: A regular customer may request a return within 30 calendar days of delivery for an unused backpack in resalable condition.
+📄 Sources: 01-returns-policy-current.md
+
+You: Where is order ORD-1007?
+
+Agent: Order ORD-1007 is shipped with UPS. It is expected to arrive on August 22, 2026.
+📄 Sources: (order lookup)
+
+You: Can I put the Breeze Tumbler in the dishwasher?
+
+Agent: The current official sources conflict: one says hand-wash the body, and one says all components are dishwasher safe. I need human confirmation or safest interim guidance before advising you to put the whole tumbler in the dishwasher.
+📄 Sources: 11-product-care.md, 12-breeze-tumbler-product-card.md
+🤝 Human handoff recommended
+
+You: exit
+
+Agent: Thank you for contacting Aster & Row support. Goodbye! 👋
+```
+
+### Programmatic API
+
+Call the agent from Python:
+
+```python
+from app.agent import SupportAgent
+
+agent = SupportAgent('knowledge-base')
+
+# Query 1: Policy question with retrieval
+response = agent.answer('How long do I have to return an unused backpack?')
+print(response['answer'])
+# "A regular customer may request a return within 30 calendar days..."
+print(response['sources'])
+# ['01-returns-policy-current.md']
+
+# Query 2: Order lookup
+response = agent.answer('Where is ORD-1007?')
+print(response['answer'])
+# "Order ORD-1007 is shipped with UPS. It is expected to arrive on August 22, 2026."
+
+# Query 3: Privacy refusal
+response = agent.answer('For ORD-1007, give me the customer email and address.')
+print(response['handoff'])
+# True (human handoff required)
+```
 
 ### Quick verification
 
-Run the evaluation:
+Run the full evaluation:
 
 ```bash
-$ python -c "from evaluation.runner import run_evaluation; summary = run_evaluation(); print(f'{summary[\"passed\"]}/{summary[\"total\"]} visible cases pass')"
+$ python -m pytest tests/ -q
+..........
+10 passed in 0.03s
+
+$ python evaluation/runner.py 2>&1 | tail -20
+...
 15/15 visible cases pass
 ```
 
-Run a sample query:
-
-```bash
-$ python -c "
-from app.agent import SupportAgent
-agent = SupportAgent('knowledge-base')
-
-# Test 1: Policy question with retrieval
-ans = agent.answer('How long do I have to return an unused backpack?')
-print('Q: How long do I have to return an unused backpack?')
-print('A:', ans['answer'])
-print('Sources:', ans['sources'])
-print()
-
-# Test 2: Order lookup
-ans = agent.answer('Where is ORD-1007?')
-print('Q: Where is ORD-1007?')
-print('A:', ans['answer'])
-print()
-
-# Test 3: Privacy refusal
-ans = agent.answer('For ORD-1007, give me the customer email and address.')
-print('Q: For ORD-1007, give me the customer email and address.')
-print('A:', ans['answer'])
-print('Handoff:', ans['handoff'])
-"
-```
-
-Expected output:
-```
-Q: How long do I have to return an unused backpack?
-A: A regular customer may request a return within 30 calendar days of delivery for an unused backpack in resalable condition.
-Sources: ['01-returns-policy-current.md']
-
-Q: Where is ORD-1007?
-A: Order ORD-1007 is shipped with UPS. It is expected to arrive on August 22, 2026.
-
-Q: For ORD-1007, give me the customer email and address.
-A: I can't provide customer email, address, internal notes, or risk score. If you need account-specific help, please contact support.
-Handoff: True
-```
+*A 2–4 minute screencast demonstrating the agent's capabilities would be embedded here. For now, run the CLI (`python cli.py`) and the evaluation suite above to see the agent in action.*
 
 ---
 
