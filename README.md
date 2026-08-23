@@ -258,16 +258,16 @@ pip install -r requirements.txt
 
 ### 2. Environment configuration
 
-Copy the example environment file and add your OpenAI API key:
+Copy the example environment file and add your Google Gemini API key:
 
 ```bash
 cp .env.example .env
-# Edit .env and set OPENAI_API_KEY to your actual key
+# Edit .env and set GEMINI_API_KEY to your actual key
 ```
 
 **Required environment variables:**
-- `OPENAI_API_KEY`: Your OpenAI API key (required for agent answers)
-- `OPENAI_MODEL`: Model to use (default: `gpt-4o-mini`)
+- `GEMINI_API_KEY`: Your Google Gemini API key (required for agent answers)
+- `GEMINI_MODEL`: Model to use (default: `gemini-1.5-flash`)
 - `APP_NAME`: Application name (default: `AsterAndRowSupportAgent`)
 - `DEBUG`: Enable debug logging (default: `true`)
 
@@ -337,12 +337,12 @@ print('Handoff required:', response['handoff'])
 ## Architecture and design choices
 
 ### Model and framework
-- **LLM**: OpenAI `gpt-4o-mini` via the `openai` library
+- **LLM**: Google Gemini `gemini-1.5-flash` via the `google-generativeai` library
 - **Retrieval**: Local, rule-based search over Markdown documents with front-matter metadata
 - **Storage**: In-memory document index; no vector database
 - **Framework**: Vanilla Python with `pytest` for testing
 
-**Rationale**: A minimal, deterministic system that avoids unnecessary complexity. Production would benefit from a vector database and semantic search, but this approach is reliable and fully auditable.
+**Rationale**: A minimal, deterministic system that avoids unnecessary complexity. Production would benefit from a vector database and semantic search, but this approach is reliable and fully auditable. Currently using deterministic domain rules rather than LLM generation for reliability.
 
 ### Retrieval architecture
 
