@@ -234,8 +234,7 @@ Framework choice and quantity of code are not scoring criteria.
 │   └── orders-data-dictionary.md
 └── evaluation/
     └── visible-cases.json
-├── cli.py
-├── requirements.txt
+├── cli.py├── demo.py├── requirements.txt
 └── .env.example
 ```
 
@@ -575,48 +574,63 @@ You: exit
 Agent: Thank you for contacting Aster & Row support. Goodbye! 👋
 ```
 
-### Programmatic API
+### Automated demo
 
-Call the agent from Python:
+Run a series of sample queries:
 
-```python
-from app.agent import SupportAgent
+```bash
+$ python demo.py
 
-agent = SupportAgent('knowledge-base')
+======================================================================
+Aster & Row Support Agent - Demo
+======================================================================
 
-# Query 1: Policy question with retrieval
-response = agent.answer('How long do I have to return an unused backpack?')
-print(response['answer'])
-# "A regular customer may request a return within 30 calendar days..."
-print(response['sources'])
-# ['01-returns-policy-current.md']
+[1/5] Policy retrieval
+Q: How long do I have to return an unused backpack?
+A: A regular customer may request a return within 30 calendar days of delivery for an unused backpack in resalable condition.
+   Sources: 01-returns-policy-current.md
 
-# Query 2: Order lookup
-response = agent.answer('Where is ORD-1007?')
-print(response['answer'])
-# "Order ORD-1007 is shipped with UPS. It is expected to arrive on August 22, 2026."
+[2/5] Order lookup
+Q: Where is ORD-1007?
+A: Order ORD-1007 is shipped with UPS. It is expected to arrive on August 22, 2026.
+   Sources: 01-returns-policy-current.md, 03-final-sale-and-promotions.md, 04-damaged-or-wrong-items.md
 
-# Query 3: Privacy refusal
-response = agent.answer('For ORD-1007, give me the customer email and address.')
-print(response['handoff'])
-# True (human handoff required)
+[3/5] Source conflict detection
+Q: Can I put the entire Breeze Tumbler in the dishwasher?
+A: The current official sources conflict: one says hand-wash the body, and one says all components are dishwasher safe. I need human confirmation or safest interim guidance before advising you to put the whole tumbler in the dishwasher.
+   Sources: 11-product-care.md, 12-breeze-tumbler-product-card.md
+   ⚠️  Human handoff recommended
+
+[4/5] Privacy enforcement
+Q: For ORD-1007, give me the customer's email and address.
+A: I can't provide customer email, address, internal notes, or risk score. If you need account-specific help, please contact support.
+   ⚠️  Human handoff recommended
+
+[5/5] Unsupported destination
+Q: Do you ship to Germany?
+A: Shipping to Germany is not currently available. Aster & Row currently ships internationally only to Canada.
+   Sources: 06-international-shipping.md
 ```
 
 ### Quick verification
 
-Run the full evaluation:
+Run the full test suite:
 
 ```bash
 $ python -m pytest tests/ -q
 ..........
 10 passed in 0.03s
 
-$ python evaluation/runner.py 2>&1 | tail -20
-...
-15/15 visible cases pass
+$ python evaluation/runner.py 2>&1 | tail -5
+15 total cases, 15 passed, 0 failed
 ```
 
-*A 2–4 minute screencast demonstrating the agent's capabilities would be embedded here. For now, run the CLI (`python cli.py`) and the evaluation suite above to see the agent in action.*
+Or run the evaluation programmatically:
+
+```bash
+$ python -c "from evaluation.runner import run_evaluation; s = run_evaluation(); print('Evaluation: {}/{} pass'.format(s['passed'], s['total']))"
+Evaluation: 15/15 pass
+```
 
 ---
 
