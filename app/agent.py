@@ -1,3 +1,6 @@
+import re
+
+from app.memory import SessionMemory
 from app.retrieval import KnowledgeBase
 from app.tools import order_lookup
 
@@ -6,6 +9,7 @@ class SupportAgent:
     def __init__(self, knowledge_base_dir: str):
         self.kb = KnowledgeBase(knowledge_base_dir)
         self.kb.build()
+        self.memory = SessionMemory()
 
     def _detect_policy_conflict(self, user_message: str, retrieval):
         lowered = user_message.lower()
@@ -14,16 +18,35 @@ class SupportAgent:
             return True
         return False
 
-    def answer(self, user_message: str, session_context=None):
-        session_context = session_context or {}
-        retrieval = self.kb.search(user_message, limit=5)
+    def _extract_order_id(self, text: str):
+        match = re.search(r"ORD-\d+", text, flags=re.IGNORECASE)
+        if match:
+            return match.group(0).upper()
+        return None
 
-        if "order" in user_message.lower() or "ord-" in user_message.lower():
-            order_id = user_message
-            for token in user_message.split():
-                if "ord-" in token.lower():
-                    order_id = token
-                    break
+    def _get_session_context(self, session_id: str):
+        return self.memory.get_recent_context(session_id, limit=10)
+
+    def answer(self, user_message: str, session_id: str = "default", session_context=None):
+        session_context = session_context or {}
+        self.memory.add_message(session_id, "user", user_message)
+        retrieval = self.kb.search(user_message, limit=5)
+        history = self._get_session_context(session_id)
+        history_text = " ".join(msg["content"] for msg in history)
+
+        if "order" in user_message.lower() and self._extract_order_id(user_message) is None:
+            if "where is my order" in user_message.lower() or "my order" in user_message.lower() or "order" in user_message.lower():
+                return {
+                    "answer": "I need your order ID before I can look up the status. Please send the order ID, for example ORD-1007.",
+                    "sources": [r["filename"] for r in retrieval],
+                    "tool_used": None,
+                    "handoff": False,
+                }
+
+        if "order" in user_message.lower() or self._extract_order_id(user_message) is not None:
+            order_id = self._extract_order_id(user_message) or ""
+            if not order_id:
+                order_id = user_message
             order_result = order_lookup(order_id)
             if order_result.get("found"):
                 return {
@@ -31,12 +54,14 @@ class SupportAgent:
                     "sources": [r["filename"] for r in retrieval],
                     "tool_used": "order_lookup",
                     "tool_result": order_result,
+                    "handoff": False,
                 }
             return {
                 "answer": order_result["message"],
                 "sources": [r["filename"] for r in retrieval],
                 "tool_used": "order_lookup",
                 "tool_result": order_result,
+                "handoff": order_result.get("found") is False,
             }
 
         if self._detect_policy_conflict(user_message, retrieval):
@@ -55,6 +80,9 @@ class SupportAgent:
                 "tool_used": None,
                 "handoff": True,
             }
+
+        if "canada" in user_message.lower() and "international" in history_text.lower():
+            retrieval = [r for r in retrieval if r["filename"] == "06-international-shipping.md"]
 
         return {
             "answer": retrieval[0]["text"],

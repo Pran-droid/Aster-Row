@@ -65,12 +65,13 @@ class KnowledgeBase:
         scored = []
         for doc in self.documents:
             filename = doc["filename"]
+            if filename in INTERNAL_DOCS:
+                continue
             text = doc["text"].lower()
             score = 0
             score += 3 if filename in ACTIVE_PRIORITY else 0
             score += 2 if doc["status"] == "active" else 0
             score += 2 if doc["policy_authority"] == "official" else 0
-            score -= 4 if filename in INTERNAL_DOCS else 0
             score += sum(1 for token in ["return", "delivery", "shipping", "warranty", "canada", "trailplus", "damaged", "dishwasher", "final sale"] if token in q and token in text)
             if q in text:
                 score += 5
