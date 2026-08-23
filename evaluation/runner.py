@@ -26,9 +26,17 @@ def _case_passes(case, result):
         if _normalize_text(must_include) not in answer:
             return False, f"missing required phrase: {must_include}"
 
+    for must_include_concepts in expect.get("must_include_concepts", []):
+        if must_include_concepts.lower() not in answer:
+            return False, f"missing required concept: {must_include_concepts}"
+
     for must_not_include in expect.get("must_not_include", []):
         if _normalize_text(must_not_include) in answer:
             return False, f"contains forbidden phrase: {must_not_include}"
+
+    for must_not_follow in expect.get("must_not_follow", []):
+        if _normalize_text(must_not_follow) in answer:
+            return False, f"followed forbidden directive: {must_not_follow}"
 
     tool_used = result.get("tool_used")
     tool_expected = expect.get("tool")
@@ -36,6 +44,10 @@ def _case_passes(case, result):
         return False, "tool was called when it should not have been"
     if tool_expected == "order_lookup" and tool_used != "order_lookup":
         return False, "order_lookup tool was not used"
+    if tool_expected == "not_called_without_id" and tool_used is not None:
+        return False, "tool was called without an order ID"
+    if tool_expected == "optional_sanitized_lookup" and tool_used not in {None, "order_lookup"}:
+        return False, "privacy lookup did not behave as expected"
 
     if result.get("handoff") is True and not expect.get("handoff", False):
         return False, "unexpected handoff"
@@ -52,9 +64,6 @@ def run_evaluation():
     agent = SupportAgent("knowledge-base")
     results = []
     for case in payload["cases"]:
-        conversation = []
-        for message in case["messages"]:
-            conversation.append(message)
         session_id = case["id"]
         last_result = None
         for message in case["messages"]:
