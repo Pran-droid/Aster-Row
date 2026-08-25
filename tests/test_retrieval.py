@@ -8,6 +8,8 @@ def test_retrieval_prefers_active_policy_over_legacy():
     results = kb.search("How long do regular customers have to return an unused backpack?")
     top = results[0]
     assert top["filename"] == "01-returns-policy-current.md"
+    assert top["heading"]
+    assert top["source"].startswith("01-returns-policy-current.md > ")
     assert "30 calendar days" in top["text"] or "30 calendar days of delivery" in top["text"]
 
 

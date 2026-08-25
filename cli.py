@@ -6,9 +6,16 @@ Run with: python cli.py
 """
 
 import sys
-from pathlib import Path
 
 from app.agent import SupportAgent
+
+# Emoji/UTF-8 output must not crash on consoles that default to a legacy code
+# page (e.g. Windows cp1252). Reconfigure stdout/stderr to UTF-8 when possible.
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except (AttributeError, ValueError):
+    pass
 
 
 def format_sources(sources: list) -> str:

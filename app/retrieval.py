@@ -1,8 +1,5 @@
-import json
 import re
 from pathlib import Path
-
-from app.config import KNOWLEDGE_BASE_DIR
 
 
 INTERNAL_DOCS = {"14-internal-content-migration-notes.md"}
@@ -32,10 +29,13 @@ class KnowledgeBase:
             metadata, body = self._parse_front_matter(text)
             chunks = self._chunk_text(body)
             for idx, chunk in enumerate(chunks):
+                heading = self._heading_for_chunk(chunk, metadata.get("title", path.stem))
                 self.documents.append(
                     {
                         "filename": path.name,
                         "title": metadata.get("title", path.stem),
+                        "heading": heading,
+                        "source": f"{path.name} > {heading}",
                         "status": metadata.get("status", "unknown"),
                         "effective_date": metadata.get("effective_date", ""),
                         "policy_authority": metadata.get("policy_authority", "unknown"),
@@ -44,6 +44,13 @@ class KnowledgeBase:
                         "text": chunk,
                     }
                 )
+
+    def _heading_for_chunk(self, chunk: str, fallback: str) -> str:
+        for line in chunk.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                return stripped.lstrip("#").strip()
+        return fallback
 
     def _chunk_text(self, text: str, max_chars: int = 800):
         paragraphs = [p.strip() for p in re.split(r"\n\s*\n+", text) if p.strip()]
@@ -72,7 +79,7 @@ class KnowledgeBase:
             score += 3 if filename in ACTIVE_PRIORITY else 0
             score += 2 if doc["status"] == "active" else 0
             score += 2 if doc["policy_authority"] == "official" else 0
-            score += sum(1 for token in ["return", "delivery", "shipping", "warranty", "canada", "trailplus", "damaged", "dishwasher", "final sale"] if token in q and token in text)
+            score += sum(1 for token in ["return", "delivery", "shipping", "warranty", "canada", "trailplus", "damaged", "dishwasher", "final sale", "gift card", "price adjustment", "cancel", "address", "processing", "domestic", "po box"] if token in q and token in text)
             if q in text:
                 score += 5
             scored.append({**doc, "score": score})
@@ -81,6 +88,8 @@ class KnowledgeBase:
         return [{
             "filename": item["filename"],
             "title": item["title"],
+            "heading": item["heading"],
+            "source": item["source"],
             "status": item["status"],
             "score": item["score"],
             "text": item["text"],

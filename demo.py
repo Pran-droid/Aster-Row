@@ -6,6 +6,15 @@ Run with: python demo.py
 
 from app.agent import SupportAgent
 
+import sys
+
+# Ensure emoji/UTF-8 output does not crash on legacy consoles (Windows cp1252).
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except (AttributeError, ValueError):
+    pass
+
 
 def demo():
     """Run a demo of the agent with sample queries."""
